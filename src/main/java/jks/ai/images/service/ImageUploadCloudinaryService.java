@@ -3,7 +3,7 @@ package jks.ai.images.service;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.api.ApiResponse;
 import com.cloudinary.utils.ObjectUtils;
-import jks.ai.images.utils.CloudinaryEnum;
+import jks.ai.images.dto.UploadedImageDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,26 +19,29 @@ import static jks.ai.images.utils.CloudinaryEnum.*;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CloudinaryService {
+
+public class ImageUploadCloudinaryService implements ImageUploadService {
 
     private final Cloudinary cloudinary;
     private final String folder = "AI_Image_Uploader";
 
 
-    public Map<String, String> uploadImage(MultipartFile file) {
+    public UploadedImageDTO uploadImage(byte[] image) {
         try {
             Map<?, ?> uploadResult = cloudinary.uploader().upload(
-                    file.getBytes(),
+                    image,
                     ObjectUtils.asMap(
                             "folder", folder,
                             "resource_type", "auto"
                     )
             );
 
-            return Map.of(
-                    SECURE_URL.value, uploadResult.get(SECURE_URL.value).toString(),
-                    PUBLIC_ID.value, uploadResult.get(PUBLIC_ID.value).toString()
-            );
+            return UploadedImageDTO
+                    .builder()
+                    .URL(SECURE_URL.value)
+                    .ID(PUBLIC_ID.value)
+                    .build() ;
+
         } catch (IOException e) {
             log.error("Error uploading image to Cloudinary", e);
             throw new RuntimeException("Failed to upload image", e);

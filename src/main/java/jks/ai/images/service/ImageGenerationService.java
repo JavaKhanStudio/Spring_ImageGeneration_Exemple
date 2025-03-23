@@ -1,10 +1,9 @@
 package jks.ai.images.service;
 
 import jks.ai.images.dto.GeneratedImageDTO;
+import jks.ai.images.dto.UploadedImageDTO;
 import jks.ai.images.entity.RecordedImage;
 import jks.ai.images.repository.RecordedImagesRepository;
-import jks.ai.images.utils.CloudinaryEnum;
-import jks.ai.images.utils.MultipartFileFromBytes;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.image.Image;
 import org.springframework.http.*;
@@ -13,7 +12,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.util.Base64;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +19,7 @@ public class ImageGenerationService {
 
     private final OpenAICallsService openAICallsService ;
     private final StabilityCallService stabilityCallService ;
-    private final CloudinaryService cloudinaryService ;
+    private final ImageUploadCloudinaryService imageUploadCloudinaryService;
     private final RecordedImagesRepository recordedImagesRepository ;
 
     private final MediaType imageType= MediaType.IMAGE_PNG ;
@@ -93,10 +91,9 @@ public class ImageGenerationService {
     public RecordedImage saveImage(String prompt, byte[] content) throws Exception {
         // Save on Cloud
         String fileName = generateFileNameFromPrompt(prompt, 100) ;
-        MultipartFileFromBytes multipartFileImage = new MultipartFileFromBytes(content, fileName, fileName, imageType.getType());
-        Map<String, String> uploaderValue = cloudinaryService.uploadImage(multipartFileImage) ;
+        UploadedImageDTO uploaderValue = imageUploadCloudinaryService.uploadImage(content) ;
 
-        if(uploaderValue.get(CloudinaryEnum.SECURE_URL.value) == null || uploaderValue.get(CloudinaryEnum.PUBLIC_ID.value) == null) {
+        if(uploaderValue.URL() == null || uploaderValue.ID() == null) {
             throw new Exception("Error when uploading image to the cloud");
         }
 
@@ -104,8 +101,8 @@ public class ImageGenerationService {
         RecordedImage recordedImage = RecordedImage
                 .builder()
                 .imageName(fileName)
-                .cloudURI(uploaderValue.get(CloudinaryEnum.SECURE_URL.value))
-                .cloudID(uploaderValue.get(CloudinaryEnum.PUBLIC_ID.value))
+                .cloudURI(uploaderValue.URL())
+                .cloudID(uploaderValue.ID())
                 .prompt(prompt)
                 .build();
 
@@ -139,6 +136,5 @@ public class ImageGenerationService {
 
         return !fileName.isEmpty() ? fileName.toString().toLowerCase() + ".png" : "file";
     }
-
 
 }
