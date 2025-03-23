@@ -1,0 +1,23 @@
+spring.application.name=images
+
+# H2 Database
+spring.datasource.url=jdbc:h2:file:./data/recorded
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=password
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.h2.console.enabled=true
+
+# JPA config
+spring.jpa.generate-ddl = true
+spring.jpa.hibernate.ddl-auto = update
+
+
+# Cloudinary Configuration
+cloudinary.cloud-name=PLACE_HOLDER
+cloudinary.api-key=PLACE_HOLDER
+cloudinary.api-secret=PLACE_HOLDER
+
+# AI keys
+spring.ai.openai.api-key=PLACE_HOLDER
+spring.ai.stabilityai.api-key=PLACE_HOLDER
