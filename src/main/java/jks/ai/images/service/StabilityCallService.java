@@ -20,26 +20,21 @@ public class StabilityCallService {
                 .stylePreset("cinematic")
                 .N(1)
                 .height(1024)
-                .width(1024).build() ;
+                .width(1024)
+                .build() ;
 
         stabilityAiImageModel = new StabilityAiImageModel(api, options) ;
     }
 
-    public ImageResponse getImage(String prompt) {
+    public ImageResponse generateImage(String prompt) {
         return stabilityAiImageModel.call(
                 new ImagePrompt(prompt)
         );
     }
 
-    public ImageResponse getImage(String prompt, String stylePreset, int width, int height) {
+    public ImageResponse generateImage(String prompt,StabilityAiImageOptions options) {
         ImageResponse response = stabilityAiImageModel.call(
-                new ImagePrompt(prompt,
-                        StabilityAiImageOptions.builder()
-                                .stylePreset(stylePreset)
-                                .N(1)
-                                .height(height)
-                                .width(width).build())
-
+                new ImagePrompt(prompt,options)
         );
 
         return response;

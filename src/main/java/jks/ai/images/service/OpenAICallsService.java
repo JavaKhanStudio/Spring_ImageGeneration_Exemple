@@ -7,6 +7,8 @@ import io.github.sashirestela.openai.domain.image.Size;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.CompletionException;
+
 @Service
 public class OpenAICallsService {
 
@@ -18,23 +20,6 @@ public class OpenAICallsService {
                 .apiKey(openAiApiKey)
                 .build();
     }
-
-     /*
-    private String generateWithDalle(String prompt) {
-        String apiUrl = "https://api.openai.com/v1/images/generations";
-        String requestBody = "{" +
-                "\"prompt\": \"" + prompt + "\"," +
-                "\"size\": \"1024x1024\"}";
-
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + openAiApiKey);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, requestBody, String.class);
-        return extractImageUrlFromResponse(response.getBody());
-    }
-    */
 
     public String generateWithDalle(String prompt){
         var imageRequest = ImageRequest.builder()
@@ -49,6 +34,27 @@ public class OpenAICallsService {
         imageResponse.stream().forEach(img -> System.out.println("\n" + img.getUrl()));
 
         return imageResponse.get(0).getUrl() ;
+    }
+
+    public String generateWithDalle(ImageRequest imageRequest) throws Exception {
+        if (imageRequest.getN() != 1) {
+            throw new Exception("Only support Single Image");
+        }
+
+        try {
+            var futureImage = openAI.images().create(imageRequest);
+            var imageResponse = futureImage.join();
+            imageResponse.stream().forEach(img -> System.out.println("\n" + img.getUrl()));
+            return imageResponse.get(0).getUrl();
+        } catch (CompletionException e) {
+            System.err.println("Request failed:");
+            if (e.getCause() != null) {
+                e.getCause().printStackTrace();
+            } else {
+                e.printStackTrace();
+            }
+            throw new Exception("Failed to generate image with DALL·E", e);
+        }
     }
 
 }

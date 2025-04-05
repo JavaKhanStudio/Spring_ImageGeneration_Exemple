@@ -1,9 +1,14 @@
 package jks.ai.images.service;
 
+import io.github.sashirestela.openai.domain.image.ImageRequest;
+import io.github.sashirestela.openai.domain.image.ImageResponseFormat;
+import io.github.sashirestela.openai.domain.image.Size;
 import jks.ai.images.dto.GeneratedImageDTO;
 import jks.ai.images.dto.UploadedImageDTO;
 import jks.ai.images.entity.RecordedImage;
 import jks.ai.images.repository.RecordedImagesRepository;
+import jks.ai.images.utils.ImageProviderEnum;
+import jks.ai.images.utils.QualityEnum;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.image.Image;
 import org.springframework.http.*;
@@ -25,13 +30,14 @@ public class ImageGenerationService {
     private final MediaType imageType= MediaType.IMAGE_PNG ;
 
     public GeneratedImageDTO generateAndSaveImage(String prompt,
-                                                  String provider) throws Exception {
+                                                  ImageProviderEnum provider,
+                                                  QualityEnum quality) throws Exception {
         byte[] content = null;
 
-        if ("dalle".equalsIgnoreCase(provider)) {
-            content = getImageFromDalle(prompt);
-        } else if ("stability".equalsIgnoreCase(provider)) {
-            content = getImageFromStability(prompt);
+        if (provider == ImageProviderEnum.OPEN_AI) {
+            content = getImageFromDalle(prompt, quality);
+        } else if (provider == ImageProviderEnum.STABILITY) {
+            content = getImageFromStability(prompt, quality);
         }
 
         RecordedImage recordedImage = saveImage(prompt,content) ;
@@ -45,8 +51,41 @@ public class ImageGenerationService {
                 .build() ;
     }
 
-    public byte[] getImageFromDalle(String prompt) throws Exception {
-        String imageUrl = openAICallsService.generateWithDalle(prompt);
+    public byte[] getImageFromDalle(String prompt, QualityEnum quality) throws Exception {
+
+        ImageRequest imageRequest = null;
+
+        if(quality == QualityEnum.LOW) {
+            imageRequest = ImageRequest.builder()
+                    .prompt(prompt)
+                    .n(1)
+                    .size(Size.X256)
+                    .responseFormat(ImageResponseFormat.URL)
+                    .model("dall-e-2")
+                    .build() ;
+        }
+        else if (quality == QualityEnum.MEDIUM) {
+            imageRequest = ImageRequest.builder()
+                    .prompt(prompt)
+                    .n(1)
+                    .size(Size.X1024)
+                    .responseFormat(ImageResponseFormat.URL)
+                    .model("dall-e-3")
+                    .build() ;
+        }
+        else if(quality == QualityEnum.HIGH) {
+            imageRequest = ImageRequest.builder()
+                    .prompt(prompt)
+                    .n(1)
+                    .size(Size.X1792X)
+                    .quality(ImageRequest.Quality.HD)
+                    .responseFormat(ImageResponseFormat.URL)
+                    .model("dall-e-3")
+                    .build() ;
+        }
+
+        String imageUrl = openAICallsService.generateWithDalle(imageRequest);
+
 
         if (imageUrl != null) {
             try {
@@ -67,8 +106,8 @@ public class ImageGenerationService {
         throw new Exception("No URL sent by OpenAI") ;
     }
 
-    public byte[] getImageFromStability(String prompt) throws Exception {
-        var result = stabilityCallService.getImage(prompt);
+    public byte[] getImageFromStability(String prompt, QualityEnum quality) throws Exception {
+        var result = stabilityCallService.generateImage(prompt);
 
         if (result != null && result.getResult() != null && !result.getResults().isEmpty()) {
             Image image = result.getResult().getOutput();
