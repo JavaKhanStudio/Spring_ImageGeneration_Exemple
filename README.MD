@@ -42,4 +42,4 @@ GET /generate-image/{pathType}
     - `stability` (Stability AI)
 
 ### Example
-http://localhost:8080/generate-image/justImage?prompt=A%20Cute%20Dog&provider=dalle"# Spring_ImageGeneration_Exemple" 
+http://localhost:8080/generate-image/justImage?prompt=A%20Cute%20Dog&provider=OPEN_AI&quality=LOW Spring_ImageGeneration_Exemple" 
