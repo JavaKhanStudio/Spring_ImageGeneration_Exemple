@@ -15,7 +15,13 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Base64;
 
 @Service
@@ -30,8 +36,7 @@ public class ImageGenerationService {
     private final MediaType imageType= MediaType.IMAGE_PNG ;
 
     public GeneratedImageDTO generateAndSaveImage(String prompt,
-                                                  ImageProviderEnum provider,
-                                                  QualityEnum quality) throws Exception {
+                                                  ImageProviderEnum provider, QualityEnum quality) throws Exception {
         byte[] content = null;
 
         if (provider == ImageProviderEnum.OPEN_AI) {
@@ -41,6 +46,7 @@ public class ImageGenerationService {
         }
 
         RecordedImage recordedImage = saveImage(prompt,content) ;
+        saveOnComputer(prompt, content) ;
 
         return GeneratedImageDTO
                 .builder()
@@ -86,16 +92,16 @@ public class ImageGenerationService {
 
         String imageUrl = openAICallsService.generateWithDalle(imageRequest);
 
-
         if (imageUrl != null) {
             try {
                 RestTemplate restTemplate = new RestTemplate();
-                URI uri = new URI(imageUrl); // preserve query params
+                URI uri = new URI(imageUrl);
                 RequestEntity<Void> request = RequestEntity.get(uri).build();
                 ResponseEntity<byte[]> imageResponse = restTemplate.exchange(request, byte[].class);
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(imageType);
+
                 return imageResponse.getBody() ;
             } catch (Exception e) {
                 e.printStackTrace();
@@ -150,6 +156,51 @@ public class ImageGenerationService {
         return recordedImage ;
     }
 
+    public void saveOnComputer(String prompt, byte[] imageBytes) throws IOException, URISyntaxException {
+        String simplifyName = "../image/" + prompt
+                .substring(0, Math.min(prompt.length(), 20))
+                .toLowerCase()
+                .replace(",","")
+                .replace("'","")
+                .replace(" ","_")
+                + ".png" ;
+
+        Path targetFilePath = getAvailablePath(Paths.get(simplifyName)) ;
+        Files.createDirectories(targetFilePath.getParent());
+
+        try (FileOutputStream fos = new FileOutputStream(targetFilePath.toFile())) {
+            fos.write(imageBytes);
+            System.out.println("Image saved With name " + targetFilePath.getFileName());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private static Path getAvailablePath(Path originalPath) {
+        Path parent = originalPath.getParent();
+        String fileName = originalPath.getFileName().toString();
+        String name = fileName;
+        String extension = "";
+
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex != -1) {
+            name = fileName.substring(0, dotIndex);
+            extension = fileName.substring(dotIndex); // includes the dot
+        }
+
+        int count = 1;
+        Path newPath = originalPath;
+
+        while (Files.exists(newPath)) {
+            String newFileName = name + "_" + count + extension;
+            newPath = (parent != null) ? parent.resolve(newFileName) : Paths.get(newFileName);
+            count++;
+        }
+
+        return newPath;
+    }
+
     public static String generateFileNameFromPrompt(String prompt, int maxLength) {
         if (prompt == null || prompt.isBlank()) return "file";
 
@@ -157,11 +208,9 @@ public class ImageGenerationService {
         String[] words = prompt.split("\\s+");
 
         for (String word : words) {
-            // Remove non-alphanumeric characters
             String cleanWord = word.replaceAll("[^a-zA-Z0-9]", "");
             if (cleanWord.isEmpty()) continue;
 
-            // Check if adding this word would exceed the limit
             if (fileName.length() + cleanWord.length() + (fileName.length() > 0 ? 1 : 0) > maxLength) {
                 break;
             }
